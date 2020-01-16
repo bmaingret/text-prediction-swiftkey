@@ -1,0 +1,46 @@
+---
+title: "Text Prediction Swiftkey - Notebook for Quiz 1"
+output: html_notebook
+---
+
+```{r warning=FALSE, message=FALSE}
+library(here)
+library(stringr)
+library(tidyr)
+library(dplyr)
+library(quanteda)
+library(ggplot2)
+
+source(here("src/utils.R"))
+
+
+
+
+```
+
+## Quiz 1 for the course
+
+Reading in the files
+```{r}
+data <- lapply(FILES_PATH,  read_lines)
+names(data) <- basename(FILES_PATH)
+```
+
+Finding longest line
+```{r}
+sapply(data, function(x) max(str_length(x)))
+```
+
+Love is in the air
+```{r}
+sum(str_detect(data$en_US.twitter.txt, "love")) / sum(str_detect(data$en_US.twitter.txt, "hate"))
+```
+
+Biostats
+```{r}
+data$en_US.twitter.txt[str_which(data$en_US.twitter.txt, "biostats")]
+```
+
+```{r}
+sum(str_detect(data$en_US.twitter.txt, "^A computer once beat me at chess, but it was no match for me at kickboxing$"))
+```

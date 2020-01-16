@@ -1,0 +1,142 @@
+---
+title: "Text Prediction Swiftkey - EDA Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+  knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r warning=FALSE, message=FALSE}
+require(here)
+require(stringr)
+require(tidyr)
+require(dplyr)
+require(readr)
+require(quanteda)
+require(ggplot2)
+require(wordcloud)
+source(here("src/utils.R"))
+```
+
+## Information on the files
+Number of lines
+```{r}
+sapply(FILES_PATH, countLines)
+```
+
+Size of the files
+```{r}
+sapply(FILES_PATH, function(x) utils:::format.object_size(file.size(x), "auto"))
+
+```
+
+
+
+
+```{r}
+# Setting the number of lines we work on
+nlines=5000
+```
+
+## EDA on `r nlines` samples
+
+We create corpuses using Quanteda samples from the data. After computing text frequencies for various n-grams we plot top 10 grams for each source and n-gram, as well as cumulative frequencies to have an idea of how many n-grams we would need to represent a certain percentage of the texts.
+
+```{r}
+data <- lapply(FILES_PATH,  read_lines, n_max=nlines)
+names(data) <- FILENAMES
+
+corpuses <- list()
+for (i in 1:length(data)){
+  tmp <- corpus(data[[i]])
+  web_source <- names(data[i])
+  docvars(tmp, "web_source") <- web_source
+  corpuses[[web_source]] <- tmp
+}
+corpus_web <- corpuses[[1]]+corpuses[[2]]+corpuses[[3]]
+```
+
+```{r}
+
+# Helper functions
+get_dfm <- function(.data, ngrams=1, top_n=NULL, ...){
+  .data %>%
+    corpus_reshape(to = "sentences") %>%
+    tokens() %>% 
+    tokens_remove("^[\\p{P}]+$", padding = TRUE, valuetype = "regex") %>%
+    tokens_ngrams(n = ngrams) %>% 
+    dfm(...)
+}
+
+get_textstat <- function(.data){
+  .data %>%
+    dfm_group( groups="web_source") %>%
+    dfm_weight(scheme="prop")%>% 
+    textstat_frequency(groups="web_source", ties_method = "first")
+}
+
+# Text frequencies
+freqs <- tibble()
+for (i in 1:5){
+  freqs <- corpus_web %>%
+    get_dfm(ngrams=i) %>%
+    get_textstat() %>%
+    mutate(ngrams=i) %>%
+    bind_rows(freqs)
+}
+
+freqs <- freqs %>%
+  mutate(frequency=frequency*100) %>%
+  mutate(ngrams=as.factor(ngrams)) %>%
+  group_by(group, ngrams) %>%
+  mutate(cs = cumsum(frequency)) %>%
+  mutate(index = row_number())
+```
+
+
+```{r}
+# Plotting top 10 grams
+for (i in 1:3){
+  plot <- freqs %>%
+    filter(ngrams == i) %>%
+    top_n(-10, rank) %>%
+    ggplot(aes(
+      x = reorder(feature, -frequency),
+      y = frequency,
+      colour = group
+    )) + 
+    geom_col(position = "dodge") + 
+    theme(axis.text.x = element_text(angle = 90, vjust=0, hjust=1)) + 
+    facet_grid(vars(group))
+  print(plot)
+}
+
+```
+
+```{r}
+# Plotting cumulative frequencies
+freqs %>%
+  filter(ngrams=="1") %>%
+  ggplot(aes(x=index,y=cs,color=group)) + geom_point() + scale_x_log10() +
+  labs(title="Cumulative frequencies for 1-gram  (x-axis in log10)") 
+
+# Plot for [2:5]-grams
+freqs %>%
+  filter(ngrams!="1") %>%
+  ggplot(aes(x=index,y=cs,color=group)) + 
+    geom_point() + 
+    facet_wrap(vars(ngrams)) + 
+    labs(title="Cumulative frequencies for n-grams")
+
+```
+
+## Predictive models
+
+Following our EDA, a few things we will need to take into considerations:
+
+* Twitter corpus is quite different from the others and benefits of including this corpus should be evaluated
+* 1-gram are made of roughly 10k features, while for reaching a 50% coverage of 3,4,5-grams, 50k features are required
