@@ -10,9 +10,12 @@ require(stringr)
 #' @return A dataframe with our features.
 #' 
 #' 
-#' 
-build_features <- function(data, maxorder = 4){
-  corpus(data) %>%
+
+
+build_model <- function(data, maxorder = 4){
+  quanteda_options(threads=6)
+  
+  tfm <- corpus(data) %>%
     corpus_reshape(to = "sentences") %>%
     tokens(remove_numbers = TRUE,
            remove_punct = TRUE,
@@ -25,9 +28,16 @@ build_features <- function(data, maxorder = 4){
     dfm() %>%
     textstat_frequency() %>%
     as.data.frame() %>%
+    filter(frequency>4) %>%
     extract(feature, into=c("ngram", "nextword"), regex="(.*(?=_))?_*(.*)") %>%
-    select(ngram, nextword, frequency, rank) %>%
-    filter(frequency>1)
+    select(ngram, nextword, frequency, rank)
+  
+    # only keep the 5 most frequent 1 gram
+    onegram <- tfm %>% filter(is.na(ngram)) %>% top_n(5, frequency)
+    tfm <- tfm %>% filter(!is.na(ngram)) %>% bind_rows(onegram)
+      
+  tfm
+  
 }
 
 #  regex="(.*(?=_))_(.*)")
