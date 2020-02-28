@@ -22,6 +22,8 @@ predict <- function(words, model) {
       paste(tok[i:ntok], collapse = "_")
     })
   
+  
+  #Search lookups in our model for 5 results at most or once we have looked for all tokens
   results <- c()
   lookup <- 1
   n_matches <- 0

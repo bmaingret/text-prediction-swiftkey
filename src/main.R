@@ -22,5 +22,3 @@ saveRDS(model, here("models/model1"))
 
 
 source("C:/git_repos/dsci-benchmark/benchmark.R")
-
-

@@ -3,7 +3,6 @@ ZIPFILE = "Coursera-SwiftKey.zip"
 RAW_DIR = "data/raw"
 PROCESSED_DIR = "data/processed"
 SAMPLES_DIR = "data/processed/samples"
-
 ZIPOUTPUT_DIR = "final"
 FILENAMES  = c("en_US.blogs.txt", "en_US.news.txt", "en_US.twitter.txt")
 LANGUAGE = "en_US"
